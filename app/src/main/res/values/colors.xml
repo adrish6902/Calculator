@@ -9,4 +9,6 @@
     <color name="clearColor">#F64134</color>
     <color name="displayBg">#1E1E1E</color>
     <color name="displayText">#FFFFFF</color>
+    <color name="appBackground">#E2DFDE</color>
+    <color name="GridCard">#A0A4A0</color>
 </resources>

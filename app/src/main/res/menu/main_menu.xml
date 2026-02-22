@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/menu_theme"
+        android:title="Theme">
+
+        <menu>
+            <group android:checkableBehavior="single">
+
+                <item
+                    android:id="@+id/theme_light"
+                    android:title="Light"/>
+
+                <item
+                    android:id="@+id/theme_dark"
+                    android:title="Dark"/>
+
+                <item
+                    android:id="@+id/theme_system"
+                    android:title="System Default"/>
+
+            </group>
+        </menu>
+
+    </item>
+
+    <item
+        android:id="@+id/menu_version"
+        android:title="Version"
+        app:showAsAction="never" />
+
+</menu>

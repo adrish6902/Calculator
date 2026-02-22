@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="appBackground">#121212</color>
+    <color name="colorPrimary">#2196F3</color>
+    <color name="colorPrimaryDark">#1976D2</color>
+    <color name="colorAccent">#FF4081</color>
+    <color name="operatorColor">#FF9800</color>
+    <color name="numberColor">#424242</color>
+    <color name="equalColor">#4CAF50</color>
+    <color name="clearColor">#F64134</color>
+    <color name="displayBg">#5B5858</color>
+    <color name="displayText">#FFFFFF</color>
+    <color name="GridCard">#525452</color>
+</resources>

@@ -1,12 +1,16 @@
 package com.example.mycalc
 
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import com.google.android.material.appbar.MaterialToolbar
 
 class MainActivity : AppCompatActivity() {
     private lateinit var resultTextView: TextView
@@ -15,6 +19,51 @@ class MainActivity : AppCompatActivity() {
     private var firstNumber = 0.0
     private var operation = ""
     private var isNewOperation=true
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        val currentMode = AppCompatDelegate.getDefaultNightMode()
+        when (currentMode) {
+            AppCompatDelegate.MODE_NIGHT_NO ->
+                menu?.findItem(R.id.theme_light)?.isChecked = true
+            AppCompatDelegate.MODE_NIGHT_YES ->
+                menu?.findItem(R.id.theme_dark)?.isChecked = true
+            else ->
+                menu?.findItem(R.id.theme_system)?.isChecked = true
+        }
+
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+
+            R.id.theme_light -> {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+                Toast.makeText(this,"Theme Changed", Toast.LENGTH_SHORT).show()
+                true
+            }
+
+            R.id.theme_dark -> {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+                Toast.makeText(this,"Theme Changed", Toast.LENGTH_SHORT).show()
+                true
+            }
+
+            R.id.theme_system -> {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+                Toast.makeText(this,"Theme Changed", Toast.LENGTH_SHORT).show()
+                true
+            }
+
+            R.id.menu_version -> {
+                Toast.makeText(this, "Version 1.2.0", Toast.LENGTH_SHORT).show()
+                true
+            }
+
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,6 +116,9 @@ class MainActivity : AppCompatActivity() {
         equals.setOnClickListener { calculateResult() }
         clear.setOnClickListener { clearCalculator() }
         backspace.setOnClickListener { deleteNum() }
+
+        val toolbar: MaterialToolbar=findViewById(R.id.topAppBar)
+        setSupportActionBar(toolbar)
 
     }
 
