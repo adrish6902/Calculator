@@ -3,6 +3,7 @@ package com.example.mycalc
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
@@ -19,6 +20,13 @@ class MainActivity : AppCompatActivity() {
     private var firstNumber = 0.0
     private var operation = ""
     private var isNewOperation=true
+
+    private fun View.addHapticClick(action: () -> Unit) {
+        setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+            action()
+        }
+    }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
@@ -57,7 +65,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             R.id.menu_version -> {
-                Toast.makeText(this, "Version 2.0.0", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Version 2.5.0", Toast.LENGTH_SHORT).show()
                 true
             }
 
@@ -106,30 +114,61 @@ class MainActivity : AppCompatActivity() {
         val power: Button=findViewById(R.id.btnPower)
         val fact: Button=findViewById(R.id.btnFact)
 
-        button0.setOnClickListener { appendNumber("0") }
-        button1.setOnClickListener { appendNumber("1") }
-        button2.setOnClickListener { appendNumber("2") }
-        button3.setOnClickListener { appendNumber("3") }
-        button4.setOnClickListener { appendNumber("4") }
-        button5.setOnClickListener { appendNumber("5") }
-        button6.setOnClickListener { appendNumber("6") }
-        button7.setOnClickListener { appendNumber("7") }
-        button8.setOnClickListener { appendNumber("8") }
-        button9.setOnClickListener { appendNumber("9") }
-        dot.setOnClickListener { appendNumber(".") }
+        val btnsin: Button=findViewById(R.id.btnSin)
+        val btncos: Button=findViewById(R.id.btnCos)
+        val btntan: Button=findViewById(R.id.btnTan)
+        val btnlog: Button=findViewById(R.id.btnLog)
+        val btnpi: Button=findViewById(R.id.btnPi)
 
-        add.setOnClickListener { appendOperator("+") }
-        sub.setOnClickListener { appendOperator("-") }
-        mul.setOnClickListener { appendOperator("*") }
-        div.setOnClickListener { appendOperator("/") }
-        percent.setOnClickListener { appendOperator("%") }
-        power.setOnClickListener { appendOperator("^") }
+        button0.addHapticClick { appendNumber("0") }
+        button1.addHapticClick { appendNumber("1") }
+        button2.addHapticClick { appendNumber("2") }
+        button3.addHapticClick { appendNumber("3") }
+        button4.addHapticClick { appendNumber("4") }
+        button5.addHapticClick { appendNumber("5") }
+        button6.addHapticClick { appendNumber("6") }
+        button7.addHapticClick { appendNumber("7") }
+        button8.addHapticClick { appendNumber("8") }
+        button9.addHapticClick { appendNumber("9") }
+        dot.addHapticClick { appendNumber(".") }
 
-        equals.setOnClickListener { calculateResult() }
-        clear.setOnClickListener { clearCalculator() }
-        backspace.setOnClickListener { deleteNum() }
+        add.addHapticClick { appendOperator("+") }
+        sub.addHapticClick { appendOperator("-") }
+        mul.addHapticClick { appendOperator("*") }
+        div.addHapticClick { appendOperator("/") }
+        percent.addHapticClick { appendOperator("%") }
+        power.addHapticClick { appendOperator("^") }
 
-        root.setOnClickListener {
+        equals.addHapticClick { calculateResult() }
+        clear.addHapticClick { clearCalculator() }
+        backspace.addHapticClick { deleteNum() }
+
+        btnsin.addHapticClick {
+            expression += "sin("
+            resultTextView.text = expression
+        }
+
+        btncos.addHapticClick {
+            expression += "cos("
+            resultTextView.text = expression
+        }
+
+        btntan.addHapticClick {
+            expression += "tan("
+            resultTextView.text = expression
+        }
+
+        btnlog.addHapticClick {
+            expression += "log("
+            resultTextView.text = expression
+        }
+
+        btnpi.addHapticClick {
+            expression += Math.PI.toString()
+            resultTextView.text = expression
+        }
+
+        root.addHapticClick {
 
             if (expression.isNotEmpty() &&
                 (expression.last().isDigit() || expression.last() == ')')
@@ -141,30 +180,23 @@ class MainActivity : AppCompatActivity() {
             previousCalculationTextView.text = expression
         }
 
-        fact.setOnClickListener {
-            try{
-                val number: Double = resultTextView.text.toString().toDouble()
-                if(number<0){
-                    resultTextView.text="Error"
-                    return@setOnClickListener
-                }
-                val result = factorial(number.toInt())
-                previousCalculationTextView.text="$number! ="
-                resultTextView.text = formatResult(result.toDouble())
-                isNewOperation=true
-            }
-            catch (e:Exception){
-                resultTextView.text="Error"
+        fact.addHapticClick {
+            if (expression.isNotEmpty() &&
+                (expression.last().isDigit() || expression.last() == ')')
+            ) {
+                expression += "!"
+                resultTextView.text = expression
+                previousCalculationTextView.text = expression
             }
         }
 
-        bracOpen.setOnClickListener {
+        bracOpen.addHapticClick {
             expression += "("
             resultTextView.text = expression
             previousCalculationTextView.text = expression
         }
 
-        bracClose.setOnClickListener {
+        bracClose.addHapticClick {
             expression += ")"
             resultTextView.text = expression
             previousCalculationTextView.text = expression
@@ -231,18 +263,34 @@ class MainActivity : AppCompatActivity() {
     private fun tokenize(expr: String): List<String> {
         val tokens = mutableListOf<String>()
         var number = ""
+        var word = ""
         for (char in expr) {
-            if (char.isDigit() || char == '.') {
-                number += char
-            } else {
-                if (number.isNotEmpty()) {
-                    tokens.add(number)
-                    number = ""
+            when {
+                char.isDigit() || char == '.' -> {
+                    number += char
                 }
-                tokens.add(char.toString())
+                char.isLetter() -> {
+                    if (number.isNotEmpty()) {
+                        tokens.add(number)
+                        number = ""
+                    }
+                    word += char
+                }
+                else -> {
+                    if (number.isNotEmpty()) {
+                        tokens.add(number)
+                        number = ""
+                    }
+                    if (word.isNotEmpty()) {
+                        tokens.add(word)
+                        word = ""
+                    }
+                    tokens.add(char.toString())
+                }
             }
         }
         if (number.isNotEmpty()) tokens.add(number)
+        if (word.isNotEmpty()) tokens.add(word)
         return tokens
     }
 
@@ -256,7 +304,12 @@ class MainActivity : AppCompatActivity() {
             "/" to 2,
             "%" to 2,
             "^" to 3,
-            "√" to 4
+            "√" to 4,
+            "sin" to 4,
+            "cos" to 4,
+            "tan" to 4,
+            "log" to 4,
+            "!" to 5
         )
         for (token in tokens) {
             when {
@@ -297,11 +350,34 @@ class MainActivity : AppCompatActivity() {
 
                 val result = when (token) {
 
+                    "sin" -> {
+                        val a = stack.pop()
+                        Math.sin(Math.toRadians(a))
+                    }
+                    "cos" -> {
+                        val a = stack.pop()
+                        Math.cos(Math.toRadians(a))
+                    }
+                    "tan" -> {
+                        val a = stack.pop()
+                        Math.tan(Math.toRadians(a))
+                    }
+                    "log" -> {
+                        val a = stack.pop()
+                        if (a <= 0) throw Exception("Invalid log")
+                        Math.log10(a)
+                    }
                     "√" -> {
                         if (stack.isEmpty()) throw Exception("Invalid expression")
                         val a = stack.pop()
                         if (a < 0) throw Exception("Negative root")
                         Math.sqrt(a)
+                    }
+                    "!" -> {
+                        if (stack.isEmpty()) throw Exception("Invalid expression")
+                        val a = stack.pop()
+                        if (a < 0 || a % 1 != 0.0) throw Exception("Invalid factorial")
+                        factorial(a.toInt()).toDouble()
                     }
                     "+", "-", "*", "/", "%", "^" -> {
                         if (stack.size < 2) throw Exception("Invalid expression")

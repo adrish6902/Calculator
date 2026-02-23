@@ -7,8 +7,9 @@
     <color name="numberColor">#424242</color>
     <color name="equalColor">#4CAF50</color>
     <color name="clearColor">#F64134</color>
-    <color name="displayBg">#1E1E1E</color>
-    <color name="displayText">#FFFFFF</color>
+    <color name="displayBg">#D0D0D0</color>
+    <color name="displayText">#000000</color>
+    <color name="displayPrevText">#806D6B6B</color>
     <color name="appBackground">#E2DFDE</color>
-    <color name="GridCard">#A0A4A0</color>
+    <color name="GridCard">#E2DFDE</color>
 </resources>

@@ -46,7 +46,7 @@
             android:layout_height="wrap_content"
             android:gravity="end"
             android:maxLines="1"
-            android:textColor="#80FFFFFF"
+            android:textColor="@color/displayPrevText"
             android:textSize="20sp" />
 
         <TextView
@@ -70,7 +70,7 @@
         android:layout_marginEnd="8dp"
         android:layout_marginTop="24dp"
         android:layout_marginBottom="4dp"
-        app:cardBackgroundColor="@color/GridCard"
+        app:cardBackgroundColor="@color/appBackground"
         app:cardCornerRadius="24dp"
         app:cardElevation="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -86,10 +86,68 @@
             <GridLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:rowCount="2"
                 android:columnCount="5"
                 android:layout_marginBottom="12dp"
                 android:layout_weight="0"
                 >
+
+                <Button
+                    android:id="@+id/btnSin"
+                    style="@style/LetterButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_rowWeight="1"
+                    android:text="sin"
+                    android:maxLines="1"
+                    android:background="@drawable/button_equal_background"/>
+
+                <Button
+                    android:id="@+id/btnCos"
+                    style="@style/LetterButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_rowWeight="1"
+                    android:text="cos"
+                    android:maxLines="1"
+                    android:background="@drawable/button_equal_background"/>
+
+                <Button
+                    android:id="@+id/btnTan"
+                    style="@style/LetterButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_rowWeight="1"
+                    android:text="tan"
+                    android:maxLines="1"
+                    android:background="@drawable/button_equal_background"/>
+
+                <Button
+                    android:id="@+id/btnLog"
+                    style="@style/LetterButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_rowWeight="1"
+                    android:text="log"
+                    android:maxLines="1"
+                    android:background="@drawable/button_equal_background"/>
+
+                <Button
+                    android:id="@+id/btnPi"
+                    style="@style/LetterButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_rowWeight="1"
+                    android:text="π"
+                    android:maxLines="1"
+                    android:background="@drawable/button_equal_background"/>
+
+
 
                 <Button
                     android:id="@+id/btnOpenBrac"
@@ -110,7 +168,7 @@
                     android:background="@drawable/button_equal_background"/>
 
                 <Button android:id="@+id/btnRoot"
-                    style="@style/CalculatorButton"
+                    style="@style/LetterButton"
                     android:layout_width="0dp"
                     android:layout_columnWeight="1"
                     android:layout_rowWeight="1"
@@ -136,7 +194,7 @@
             </GridLayout>
             <GridLayout
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:columnCount="4"
                 android:rowCount="5"
@@ -179,7 +237,8 @@
                     android:layout_columnWeight="1"
                     android:layout_rowWeight="1"
                     android:text="7"
-                    android:background="@drawable/button_background"/>
+                    android:background="@drawable/button_background"
+                    />
 
                 <Button android:id="@+id/btn8"
                     style="@style/CalculatorButton"
