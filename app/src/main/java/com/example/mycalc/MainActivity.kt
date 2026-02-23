@@ -12,20 +12,82 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.appbar.MaterialToolbar
+import androidx.activity.viewModels
 
 class MainActivity : AppCompatActivity() {
+
+    private val viewModel: CalculatorViewModel by viewModels()
+
     private lateinit var resultTextView: TextView
     private lateinit var previousCalculationTextView: TextView
 
-    private var firstNumber = 0.0
-    private var operation = ""
-    private var isNewOperation=true
-
     private fun View.addHapticClick(action: () -> Unit) {
         setOnClickListener {
+            this.animate()
+                .scaleX(0.90f)
+                .scaleY(0.90f)
+                .setDuration(80)
+                .withEndAction {
+                    this.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(80)
+                        .start()
+                }
+                .start()
             it.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
             action()
         }
+    }
+
+    private fun previewResult() {
+        if (viewModel.rawExpression.isEmpty()) {
+            previousCalculationTextView.text = ""
+            resultTextView.text = "0"
+            return
+        }
+        val last = viewModel.rawExpression.last()
+        if (last.isOperator() && last != '-') {
+            previousCalculationTextView.text = ""
+            resultTextView.text = viewModel.rawExpression
+            return
+        }
+        if (viewModel.rawExpression.toDoubleOrNull() != null) {
+            previousCalculationTextView.text = ""
+            resultTextView.text = viewModel.rawExpression
+            return
+        }
+        try {
+            val formatted = viewModel.evaluatePreview()
+            previousCalculationTextView.alpha = 0f
+            previousCalculationTextView.translationY = 40f
+            updatePreviousDisplay()
+            previousCalculationTextView.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(300) // slower
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
+            resultTextView.animate()
+                .alpha(0f)
+                .setDuration(180) // slower fade out
+                .withEndAction {
+                    fitAndCompress(resultTextView, formatted)
+                    resultTextView.animate()
+                        .alpha(1f)
+                        .setDuration(260) // slower fade in
+                        .setInterpolator(android.view.animation.DecelerateInterpolator())
+                        .start()
+                }
+                .start()
+        } catch (e: Exception) {
+            previousCalculationTextView.text = ""
+            resultTextView.text = viewModel.rawExpression
+        }
+    }
+
+    private fun showInvalidInput() {
+        Toast.makeText(this, "Invalid Input", Toast.LENGTH_SHORT).show()
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -65,7 +127,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             R.id.menu_version -> {
-                Toast.makeText(this, "Version 2.5.0", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Version 3.0.0", Toast.LENGTH_SHORT).show()
                 true
             }
 
@@ -78,10 +140,43 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun checkForChangelog() {
+
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val lastVersionSeen = prefs.getString("last_version_seen", "")
+
+        val currentVersion = packageManager
+            .getPackageInfo(packageName, 0)
+            .versionName
+
+        if (lastVersionSeen != currentVersion) {
+            showChangelogDialog()
+            prefs.edit().putString("last_version_seen", currentVersion).apply()
+        }
+    }
+
+    private fun showChangelogDialog() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("What's New in 3.0.0")
+            .setMessage(
+                "• Smarter calculations\n" +
+                        "• Scientific function support\n" +
+                        "• Improved expression handling\n" +
+                        "• Adaptive long-expression display\n" +
+                        "• Smoother animations & better performance"
+            )
+            .setPositiveButton("Ok") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+
+        checkForChangelog()
 
         resultTextView=findViewById(R.id.resultTextView)
         previousCalculationTextView=findViewById(R.id.previousCalculationTextView)
@@ -130,7 +225,28 @@ class MainActivity : AppCompatActivity() {
         button7.addHapticClick { appendNumber("7") }
         button8.addHapticClick { appendNumber("8") }
         button9.addHapticClick { appendNumber("9") }
-        dot.addHapticClick { appendNumber(".") }
+
+        dot.addHapticClick {
+            if (viewModel.justEvaluated) {
+                viewModel.rawExpression = ""
+                previousCalculationTextView.text = ""
+                viewModel.justEvaluated = false
+            }
+            val lastNumber = viewModel.rawExpression.takeLastWhile {
+                it.isDigit() || it == '.'
+            }
+            if (!lastNumber.contains(".")) {
+                if (viewModel.rawExpression.isEmpty() || viewModel.rawExpression.last().isOperator() || viewModel.rawExpression.last() == '(') {
+                    viewModel.rawExpression += "0."
+                } else {
+                    viewModel.rawExpression += "."
+                }
+                updatePreviousDisplay()
+                previewResult()
+            } else {
+                showInvalidInput()
+            }
+        }
 
         add.addHapticClick { appendOperator("+") }
         sub.addHapticClick { appendOperator("-") }
@@ -142,276 +258,95 @@ class MainActivity : AppCompatActivity() {
         equals.addHapticClick { calculateResult() }
         clear.addHapticClick { clearCalculator() }
         backspace.addHapticClick { deleteNum() }
+        backspace.setOnLongClickListener {
+            if (viewModel.rawExpression.isNotEmpty()) {
+                clearCalculator()
+                Toast.makeText(this, "Cleared", Toast.LENGTH_SHORT).show()
+            } else {
+                showInvalidInput()
+            }
+            true
+        }
 
         btnsin.addHapticClick {
-            expression += "sin("
-            resultTextView.text = expression
+            viewModel.rawExpression += "sin("
+            resultTextView.text = viewModel.rawExpression
         }
 
         btncos.addHapticClick {
-            expression += "cos("
-            resultTextView.text = expression
+            viewModel.rawExpression += "cos("
+            resultTextView.text = viewModel.rawExpression
         }
 
         btntan.addHapticClick {
-            expression += "tan("
-            resultTextView.text = expression
+            viewModel.rawExpression += "tan("
+            resultTextView.text = viewModel.rawExpression
         }
 
         btnlog.addHapticClick {
-            expression += "log("
-            resultTextView.text = expression
+            viewModel.rawExpression += "log("
+            resultTextView.text = viewModel.rawExpression
         }
 
         btnpi.addHapticClick {
-            expression += Math.PI.toString()
-            resultTextView.text = expression
+            viewModel.rawExpression += Math.PI.toString()
+            resultTextView.text = viewModel.rawExpression
         }
 
         root.addHapticClick {
 
-            if (expression.isNotEmpty() &&
-                (expression.last().isDigit() || expression.last() == ')')
+            if (viewModel.rawExpression.isNotEmpty() &&
+                (viewModel.rawExpression.last().isDigit() || viewModel.rawExpression.last() == ')')
             ) {
-                expression += "*"
+                viewModel.rawExpression += "*"
             }
-            expression += "√("
-            resultTextView.text = expression
-            previousCalculationTextView.text = expression
+            viewModel.rawExpression += "√("
+            resultTextView.text = viewModel.rawExpression
+            updatePreviousDisplay()
         }
 
         fact.addHapticClick {
-            if (expression.isNotEmpty() &&
-                (expression.last().isDigit() || expression.last() == ')')
+            if (viewModel.rawExpression.isNotEmpty() &&
+                (viewModel.rawExpression.last().isDigit() || viewModel.rawExpression.last() == ')')
             ) {
-                expression += "!"
-                resultTextView.text = expression
-                previousCalculationTextView.text = expression
+                viewModel.rawExpression += "!"
+                resultTextView.text = viewModel.rawExpression
+                updatePreviousDisplay()
             }
         }
 
         bracOpen.addHapticClick {
-            expression += "("
-            resultTextView.text = expression
-            previousCalculationTextView.text = expression
+            viewModel.rawExpression += "("
+            updatePreviousDisplay()
+            previewResult()
         }
 
         bracClose.addHapticClick {
-            expression += ")"
-            resultTextView.text = expression
-            previousCalculationTextView.text = expression
+            val openCount = viewModel.rawExpression.count { it == '(' }
+            val closeCount = viewModel.rawExpression.count { it == ')' }
+            if (closeCount < openCount &&
+                viewModel.rawExpression.isNotEmpty() &&
+                !viewModel.rawExpression.last().isOperator()
+            ) {
+                viewModel.rawExpression += ")"
+                updatePreviousDisplay()
+                previewResult()
+            } else {
+                showInvalidInput()
+            }
         }
 
 
         val toolbar: MaterialToolbar=findViewById(R.id.topAppBar)
         setSupportActionBar(toolbar)
-        checkAndShowStartupWarning()
     }
-
-    private fun checkAndShowStartupWarning() {
-        val prefs = getSharedPreferences("MyCalcPrefs", MODE_PRIVATE)
-        val isFirstLaunch = prefs.getBoolean("isFirstLaunch", true)
-        if (isFirstLaunch) {
-            androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Notice")
-                .setMessage("Currently negative number operations are not supported but it will be added soon.")
-                .setPositiveButton("OK") { dialog, _ ->
-                    dialog.dismiss()
-                }
-                .setCancelable(false)
-                .show()
-            prefs.edit().putBoolean("isFirstLaunch", false).apply()
-        }
-    }
-
-    private fun formatResult(value: Double): String {
-        return if (value % 1.0 == 0.0) {
-            value.toLong().toString()
-        } else {
-            value.toString()
-                .trimEnd('0')
-                .trimEnd('.')
-        }
-    }
-
-    private fun autoBalanceBrackets(expr: String): String {
-        var openCount = 0
-        var closeCount = 0
-        for (c in expr) {
-            if (c == '(') openCount++
-            if (c == ')') closeCount++
-        }
-        if (closeCount > openCount) {
-            throw Exception("Extra closing bracket")
-        }
-        val missing = openCount - closeCount
-        return if (missing > 0) {
-            expr + ")".repeat(missing)
-        } else {
-            expr
-        }
-    }
-
-    private var justEvaluated = false
-
-    private fun evaluateExpression(expr: String): Double {
-        val tokens = tokenize(expr)
-        val postfix = infixToPostfix(tokens)
-        return evaluatePostfix(postfix)
-    }
-
-    private fun tokenize(expr: String): List<String> {
-        val tokens = mutableListOf<String>()
-        var number = ""
-        var word = ""
-        for (char in expr) {
-            when {
-                char.isDigit() || char == '.' -> {
-                    number += char
-                }
-                char.isLetter() -> {
-                    if (number.isNotEmpty()) {
-                        tokens.add(number)
-                        number = ""
-                    }
-                    word += char
-                }
-                else -> {
-                    if (number.isNotEmpty()) {
-                        tokens.add(number)
-                        number = ""
-                    }
-                    if (word.isNotEmpty()) {
-                        tokens.add(word)
-                        word = ""
-                    }
-                    tokens.add(char.toString())
-                }
-            }
-        }
-        if (number.isNotEmpty()) tokens.add(number)
-        if (word.isNotEmpty()) tokens.add(word)
-        return tokens
-    }
-
-    private fun infixToPostfix(tokens: List<String>): List<String> {
-        val output = mutableListOf<String>()
-        val stack = java.util.Stack<String>()
-        val precedence = mapOf(
-            "+" to 1,
-            "-" to 1,
-            "*" to 2,
-            "/" to 2,
-            "%" to 2,
-            "^" to 3,
-            "√" to 4,
-            "sin" to 4,
-            "cos" to 4,
-            "tan" to 4,
-            "log" to 4,
-            "!" to 5
-        )
-        for (token in tokens) {
-            when {
-                token.toDoubleOrNull() != null -> output.add(token)
-                token == "(" -> stack.push(token)
-                token == ")" -> {
-                    while (stack.isNotEmpty() && stack.peek() != "(") {
-                        output.add(stack.pop())
-                    }
-                    if (stack.isEmpty()) throw Exception("Mismatched brackets")
-                    stack.pop()
-                }
-                token in precedence -> {
-                    while (stack.isNotEmpty() &&
-                        stack.peek() in precedence &&
-                        precedence[token]!! <= precedence[stack.peek()]!!) {
-                        output.add(stack.pop())
-                    }
-                    stack.push(token)
-                }
-            }
-        }
-        while (stack.isNotEmpty()) {
-            if (stack.peek() == "(") throw Exception("Mismatched brackets")
-            output.add(stack.pop())
-        }
-        return output
-    }
-
-    private fun evaluatePostfix(tokens: List<String>): Double {
-        val stack = java.util.Stack<Double>()
-
-        for (token in tokens) {
-
-            if (token.toDoubleOrNull() != null) {
-                stack.push(token.toDouble())
-            } else {
-
-                val result = when (token) {
-
-                    "sin" -> {
-                        val a = stack.pop()
-                        Math.sin(Math.toRadians(a))
-                    }
-                    "cos" -> {
-                        val a = stack.pop()
-                        Math.cos(Math.toRadians(a))
-                    }
-                    "tan" -> {
-                        val a = stack.pop()
-                        Math.tan(Math.toRadians(a))
-                    }
-                    "log" -> {
-                        val a = stack.pop()
-                        if (a <= 0) throw Exception("Invalid log")
-                        Math.log10(a)
-                    }
-                    "√" -> {
-                        if (stack.isEmpty()) throw Exception("Invalid expression")
-                        val a = stack.pop()
-                        if (a < 0) throw Exception("Negative root")
-                        Math.sqrt(a)
-                    }
-                    "!" -> {
-                        if (stack.isEmpty()) throw Exception("Invalid expression")
-                        val a = stack.pop()
-                        if (a < 0 || a % 1 != 0.0) throw Exception("Invalid factorial")
-                        factorial(a.toInt()).toDouble()
-                    }
-                    "+", "-", "*", "/", "%", "^" -> {
-                        if (stack.size < 2) throw Exception("Invalid expression")
-                        val b = stack.pop()
-                        val a = stack.pop()
-                        when (token) {
-                            "+" -> a + b
-                            "-" -> a - b
-                            "*" -> a * b
-                            "/" -> a / b
-                            "%" -> a % b
-                            "^" -> Math.pow(a, b)
-                            else -> 0.0
-                        }
-                    }
-                    else -> throw Exception("Unknown operator")
-                }
-                stack.push(result)
-            }
-        }
-        if (stack.size != 1) throw Exception("Invalid expression")
-        return stack.pop()
-    }
-
-    private var expression = ""
-
-    private val historyList = mutableListOf<String>()
 
     private fun showHistory() {
-        if (historyList.isEmpty()) {
+        if (viewModel.historyList.isEmpty()) {
             Toast.makeText(this, "No history yet", Toast.LENGTH_SHORT).show()
             return
         }
-        val historyText = historyList.joinToString("\n")
+        val historyText = viewModel.historyList.joinToString("\n")
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Calculation History")
             .setMessage(historyText)
@@ -422,15 +357,129 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun appendOperator(op: String) {
-        if (expression.isEmpty()) return
-
-        if (justEvaluated) {
-            justEvaluated = false
+        if (viewModel.rawExpression.isEmpty()) {
+            showInvalidInput()
+            return
         }
-        if (!expression.last().isOperator()) {
-            expression += op
-            resultTextView.text = expression
-            previousCalculationTextView.text = expression
+        val last = viewModel.rawExpression.last()
+        if (last.isOperator() && last != '-') {
+            showInvalidInput()
+            return
+        }
+        if (viewModel.justEvaluated) {
+            viewModel.rawExpression += op
+            updateResultDisplay()
+            previousCalculationTextView.text = ""
+            viewModel.justEvaluated = false
+            return
+        }
+        viewModel.rawExpression += op
+        previousCalculationTextView.text = ""
+        updateResultDisplay()
+    }
+
+    private fun updatePreviousDisplay() {
+        previousCalculationTextView.post {
+            fitAndCompress(previousCalculationTextView, viewModel.rawExpression)
+        }
+    }
+
+    private fun updateResultDisplay() {
+        resultTextView.post {
+            fitAndCompress(resultTextView, viewModel.rawExpression)
+        }
+    }
+
+    private fun fitAndCompress(textView: TextView, fullText: String): String {
+
+        val paint = textView.paint
+        val availableWidth = textView.measuredWidth -
+                textView.paddingLeft -
+                textView.paddingRight
+        if (paint.measureText(fullText) <= availableWidth - 10) {
+            textView.text = fullText
+            return fullText
+        }
+        var displayText = fullText
+        while (paint.measureText(displayText) > availableWidth - 10) {
+            val compressed = compressFromStart(displayText)
+            if (compressed == displayText) break
+            displayText = compressed
+        }
+        textView.text = displayText
+        return displayText
+    }
+
+    private fun compressFromStart(expr: String): String {
+        if (expr.length <= 1) return expr
+        return expr.drop(1)
+    }
+
+    private fun deleteNum() {
+        if (viewModel.rawExpression.isNotEmpty()){
+            viewModel.rawExpression = viewModel.rawExpression.dropLast(1)
+            updatePreviousDisplay()
+            if (viewModel.rawExpression.isEmpty()) {
+                resultTextView.text = "0"
+            } else {
+                previewResult()
+            }
+        } else {
+            showInvalidInput()
+        }
+    }
+
+    private fun clearCalculator() {
+        viewModel.rawExpression = ""
+        resultTextView.text = "0"
+        previousCalculationTextView.text = ""
+        viewModel.justEvaluated = false
+    }
+
+    private fun calculateResult() {
+        if (viewModel.rawExpression.isEmpty()) {
+            showInvalidInput()
+            return
+        }
+        if (viewModel.rawExpression.toDoubleOrNull() != null) {
+            showInvalidInput()
+            return
+        }
+        val last = viewModel.rawExpression.last()
+        if (last.isOperator() && last != '-') {
+            showInvalidInput()
+            return
+        }
+        try {
+            val formatted = viewModel.evaluate()
+            previousCalculationTextView.animate()
+                .alpha(0f)
+                .setDuration(120)
+                .withEndAction {
+                    previousCalculationTextView.text = ""
+                    previousCalculationTextView.alpha = 1f
+                }
+                .start()
+            resultTextView.text = formatted
+            resultTextView.animate()
+                .scaleX(1.06f)
+                .scaleY(1.06f)
+                .setDuration(120)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .withEndAction {
+                    resultTextView.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(150)
+                        .setInterpolator(android.view.animation.OvershootInterpolator(1.1f))
+                        .start()
+                }
+                .start()
+            viewModel.rawExpression = formatted
+            viewModel.justEvaluated = true
+        } catch (e: Exception) {
+            resultTextView.text = "Error"
+            viewModel.rawExpression = ""
         }
     }
 
@@ -443,78 +492,18 @@ class MainActivity : AppCompatActivity() {
                 this == '^'
     }
 
-    private fun factorial(n: Int): Long {
-        var result = 1L
-        for (i in 1..n) {
-            result *= i
-        }
-        return result
-    }
-
-    private fun deleteNum() {
-        if(resultTextView.text.isNotEmpty() && resultTextView.text!="0.0" && resultTextView.text!="error"){
-            resultTextView.text=resultTextView.text.dropLast(1)
-        }
-        else{
-            Toast.makeText(this,"Invalid Operation",Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun clearCalculator() {
-        expression = ""
-        resultTextView.text = "0"
-        previousCalculationTextView.text = ""
-        justEvaluated = false
-    }
-
-    private fun calculateResult() {
-        try {
-            val balancedExpression = autoBalanceBrackets(expression)
-            val result = evaluateExpression(balancedExpression)
-            val formatted = formatResult(result)
-            previousCalculationTextView.text = "$balancedExpression ="
-            historyList.add("$balancedExpression = $formatted")
-            resultTextView.text = formatted
-            expression = formatted
-            justEvaluated = true
-        } catch (e: Exception) {
-            resultTextView.text = "Error"
-            expression = ""
-        }
-    }
-
-    private fun setOperation(operator: String) {
-        val currentNumber = resultTextView.text.toString().toDouble()
-        if (!isNewOperation) {
-            if (operation.isNotEmpty()) {
-                firstNumber = when (operation) {
-                    "+" -> firstNumber + currentNumber
-                    "-" -> firstNumber - currentNumber
-                    "x" -> firstNumber * currentNumber
-                    "/" -> firstNumber / currentNumber
-                    "%" -> firstNumber % currentNumber
-                    "^" -> Math.pow(firstNumber, currentNumber)
-                    else -> currentNumber
-                }
-                resultTextView.text = firstNumber.toString()
-            }
-            else {
-                firstNumber = currentNumber
-            }
-        }
-        operation = operator
-        isNewOperation = true
-        previousCalculationTextView.text = "$firstNumber $operation"
-    }
-
     private fun appendNumber(number: String) {
-        if (justEvaluated) {
-            expression = ""
-            previousCalculationTextView.text = ""
-            justEvaluated = false
+        if (viewModel.justEvaluated) {
+            if (viewModel.rawExpression.isNotEmpty() && viewModel.rawExpression.last().isOperator()) {
+                viewModel.justEvaluated = false
+            } else {
+                viewModel.rawExpression = ""
+                previousCalculationTextView.text = ""
+                viewModel.justEvaluated = false
+            }
         }
-        expression += number
-        resultTextView.text = expression
-        previousCalculationTextView.text = expression
+        viewModel.rawExpression += number
+        updatePreviousDisplay()
+        previewResult()
     }
 }

@@ -10,6 +10,6 @@
     <color name="clearColor">#F64134</color>
     <color name="displayBg">#141414</color>
     <color name="displayText">#FFFFFF</color>
-    <color name="displayPrevText">#80898787</color>
+    <color name="displayPrevText">#A9A7A7</color>
     <color name="GridCard">#000000</color>
 </resources>

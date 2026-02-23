@@ -9,7 +9,7 @@
     <color name="clearColor">#F64134</color>
     <color name="displayBg">#D0D0D0</color>
     <color name="displayText">#000000</color>
-    <color name="displayPrevText">#806D6B6B</color>
+    <color name="displayPrevText">#80494848</color>
     <color name="appBackground">#E2DFDE</color>
     <color name="GridCard">#E2DFDE</color>
 </resources>
